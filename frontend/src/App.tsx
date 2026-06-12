@@ -1,8 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
 
+interface SavedRequest {
+  id: string
+  name: string
+  url: string
+  method: 'GET' | 'POST'
+  headers: string
+  body: string
+  createdAt: string
+}
+
 function App() {
+  const [name, setName] = useState('')
   const [url, setUrl] = useState('https://jsonplaceholder.typicode.com/todos/1')
   const [method, setMethod] = useState<'GET' | 'POST'>('GET')
   const [headers, setHeaders] = useState(`{
@@ -14,6 +25,61 @@ function App() {
   const [responseTime, setResponseTime] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [savedRequests, setSavedRequests] = useState<SavedRequest[]>([])
+
+  useEffect(() => {
+    const stored = localStorage.getItem('apiDebugger.savedRequests')
+    if (stored) {
+      try {
+        setSavedRequests(JSON.parse(stored) as SavedRequest[])
+      } catch {
+        localStorage.removeItem('apiDebugger.savedRequests')
+      }
+    }
+  }, [])
+
+  const persistSavedRequests = (requests: SavedRequest[]) => {
+    setSavedRequests(requests)
+    localStorage.setItem('apiDebugger.savedRequests', JSON.stringify(requests))
+  }
+
+  const handleSaveRequest = () => {
+    if (!url.trim()) {
+      setError('URL is required to save a request')
+      return
+    }
+
+    const requestName = name.trim() || `${method} ${url}`
+    const newRequest: SavedRequest = {
+      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
+      name: requestName,
+      url,
+      method,
+      headers,
+      body,
+      createdAt: new Date().toISOString(),
+    }
+
+    persistSavedRequests([newRequest, ...savedRequests])
+    setName('')
+    setError('')
+  }
+
+  const handleLoadSavedRequest = (saved: SavedRequest) => {
+    setName(saved.name)
+    setUrl(saved.url)
+    setMethod(saved.method)
+    setHeaders(saved.headers)
+    setBody(saved.body)
+    setResponse('')
+    setStatus(null)
+    setResponseTime(null)
+    setError('')
+  }
+
+  const handleDeleteSavedRequest = (id: string) => {
+    persistSavedRequests(savedRequests.filter((item) => item.id !== id))
+  }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -71,6 +137,16 @@ function App() {
       <main className="request-panel">
         <form className="request-form" onSubmit={handleSubmit}>
           <label>
+            Request name
+            <input
+              type="text"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Optional: Give this request a name"
+            />
+          </label>
+
+          <label>
             Endpoint URL
             <input
               type="url"
@@ -111,10 +187,40 @@ function App() {
             />
           </label>
 
-          <button type="submit" className="run-button" disabled={loading}>
-            {loading ? 'Running…' : 'Send Request'}
-          </button>
+          <div className="form-actions">
+            <button type="submit" className="run-button" disabled={loading}>
+              {loading ? 'Running…' : 'Send Request'}
+            </button>
+            <button type="button" className="save-button" onClick={handleSaveRequest}>
+              Save Request
+            </button>
+          </div>
         </form>
+
+        <section className="saved-panel">
+          <div className="saved-panel-header">
+            <h2>Saved requests</h2>
+            <p>Load a saved request to edit and replay it.</p>
+          </div>
+
+          {savedRequests.length === 0 ? (
+            <div className="saved-empty">No saved requests yet.</div>
+          ) : (
+            <ul className="saved-list">
+              {savedRequests.map((saved) => (
+                <li key={saved.id} className="saved-item">
+                  <button type="button" className="saved-load" onClick={() => handleLoadSavedRequest(saved)}>
+                    <span className="saved-name">{saved.name}</span>
+                    <span className="saved-meta">{saved.method} · {saved.url}</span>
+                  </button>
+                  <button type="button" className="delete-button" onClick={() => handleDeleteSavedRequest(saved.id)}>
+                    Delete
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         <section className="response-panel">
           <div className="response-meta">
