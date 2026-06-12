@@ -1,121 +1,136 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import type { FormEvent } from 'react'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [url, setUrl] = useState('https://jsonplaceholder.typicode.com/todos/1')
+  const [method, setMethod] = useState<'GET' | 'POST'>('GET')
+  const [headers, setHeaders] = useState(`{
+  "Content-Type": "application/json"
+}`)
+  const [body, setBody] = useState('')
+  const [response, setResponse] = useState('')
+  const [status, setStatus] = useState<number | null>(null)
+  const [responseTime, setResponseTime] = useState<number | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setError('')
+    setResponse('')
+    setStatus(null)
+    setResponseTime(null)
+
+    let parsedHeaders: Record<string, string> = {}
+    try {
+      parsedHeaders = headers.trim() ? JSON.parse(headers) : {}
+    } catch (parseError) {
+      setError('Headers must be valid JSON')
+      return
+    }
+
+    const options: RequestInit = {
+      method,
+      headers: parsedHeaders,
+    }
+
+    if (method === 'POST' && body) {
+      options.body = body
+    }
+
+    setLoading(true)
+    const start = performance.now()
+
+    try {
+      const res = await fetch(url, options)
+      const end = performance.now()
+      const text = await res.text()
+      setStatus(res.status)
+      setResponseTime(Math.round(end - start))
+
+      try {
+        setResponse(JSON.stringify(JSON.parse(text), null, 2))
+      } catch {
+        setResponse(text)
+      }
+    } catch (fetchError) {
+      setError(`Request failed: ${fetchError}`)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app-shell">
+      <header className="app-header">
+        <h1>API Debugger</h1>
+        <p>Paste an endpoint, choose GET or POST, add headers/body, and run the request.</p>
+      </header>
 
-      <div className="ticks"></div>
+      <main className="request-panel">
+        <form className="request-form" onSubmit={handleSubmit}>
+          <label>
+            Endpoint URL
+            <input
+              type="url"
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              placeholder="https://api.example.com/resource"
+              required
+            />
+          </label>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+          <div className="request-row">
+            <label>
+              Method
+              <select value={method} onChange={(event) => setMethod(event.target.value as 'GET' | 'POST')}>
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+              </select>
+            </label>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+            <label>
+              Headers (JSON)
+              <textarea
+                value={headers}
+                onChange={(event) => setHeaders(event.target.value)}
+                rows={4}
+              />
+            </label>
+          </div>
+
+          <label>
+            Body (JSON)
+            <textarea
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
+              rows={6}
+              placeholder='{"key": "value"}'
+              disabled={method === 'GET'}
+            />
+          </label>
+
+          <button type="submit" className="run-button" disabled={loading}>
+            {loading ? 'Running…' : 'Send Request'}
+          </button>
+        </form>
+
+        <section className="response-panel">
+          <div className="response-meta">
+            <span>Status: {status ?? '—'}</span>
+            <span>Time: {responseTime !== null ? `${responseTime} ms` : '—'}</span>
+          </div>
+
+          {error && <div className="response-error">{error}</div>}
+
+          <label>
+            Response body
+            <textarea value={response} readOnly rows={12} />
+          </label>
+        </section>
+      </main>
+    </div>
   )
 }
 
