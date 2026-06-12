@@ -10,5 +10,14 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url = env("DATABASE_URL")
+}
+
+model Request {
+  id        String   @id @default(uuid())
+  name      String
+  url       String
+  method    String
+  headers   String  @default("{}")
+  body      String?
+  createdAt DateTime @default(now())
 }
