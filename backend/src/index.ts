@@ -1,11 +1,17 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../generated/prisma";
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 
 dotenv.config();
 
-const prisma = new PrismaClient();
+const adapter = new PrismaBetterSqlite3({
+    url: "file:./dev.db",
+});
+
+export const prisma = new PrismaClient({ adapter });
+
 const app = express();
 
 app.use(cors());
