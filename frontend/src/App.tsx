@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
 
+// Define the structure for saved API requests
 interface SavedRequest {
   id: string
   name: string
@@ -13,6 +14,8 @@ interface SavedRequest {
 }
 
 function App() {
+
+  // Set up state variables for the JSON request and response forms
   const [name, setName] = useState('')
   const [url, setUrl] = useState('https://jsonplaceholder.typicode.com/todos/1')
   const [method, setMethod] = useState<'GET' | 'POST'>('GET')
@@ -27,6 +30,7 @@ function App() {
   const [error, setError] = useState('')
   const [savedRequests, setSavedRequests] = useState<SavedRequest[]>([])
 
+  // Check if there are any saved requests in local storage
   useEffect(() => {
     const stored = localStorage.getItem('apiDebugger.savedRequests')
     if (stored) {
@@ -38,17 +42,22 @@ function App() {
     }
   }, [])
 
+  // Update the saved requests state and write the JSON string to local storage
   const persistSavedRequests = (requests: SavedRequest[]) => {
     setSavedRequests(requests)
     localStorage.setItem('apiDebugger.savedRequests', JSON.stringify(requests))
   }
 
+  // Handle when the user tries to save a request
   const handleSaveRequest = () => {
+
+    // Make sure the URL isn't empty
     if (!url.trim()) {
       setError('URL is required to save a request')
       return
     }
 
+    // Build a new request object
     const requestName = name.trim() || `${method} ${url}`
     const newRequest: SavedRequest = {
       id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
@@ -60,11 +69,15 @@ function App() {
       createdAt: new Date().toISOString(),
     }
 
+    // Save to local storage
     persistSavedRequests([newRequest, ...savedRequests])
+
+    // Clear the name and error
     setName('')
     setError('')
   }
 
+  // Handle when the user tries to load a request
   const handleLoadSavedRequest = (saved: SavedRequest) => {
     setName(saved.name)
     setUrl(saved.url)
@@ -77,12 +90,18 @@ function App() {
     setError('')
   }
 
+  // Handle when the user tries to delete a request
   const handleDeleteSavedRequest = (id: string) => {
     persistSavedRequests(savedRequests.filter((item) => item.id !== id))
   }
 
+  // Handle when the user submits an API request
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+
+    // Stop normal form submission
     event.preventDefault()
+
+    // Reset response state
     setError('')
     setResponse('')
     setStatus(null)
@@ -101,20 +120,29 @@ function App() {
       headers: parsedHeaders,
     }
 
+    // Only include the body for POST requests
     if (method === 'POST' && body) {
       options.body = body
     }
 
+    // Start measuring the request time
     setLoading(true)
     const start = performance.now()
 
     try {
+
+      // Make the API request
       const res = await fetch(url, options)
+
+      // Stop measuring the request time
       const end = performance.now()
       const text = await res.text()
       setStatus(res.status)
+
+      // Calculate the total time taken
       setResponseTime(Math.round(end - start))
 
+      // Try to pretty-print the response if it's valid JSON, otherwise just store the text as-is
       try {
         setResponse(JSON.stringify(JSON.parse(text), null, 2))
       } catch {
@@ -127,11 +155,12 @@ function App() {
     }
   }
 
+  // Main page HTML structure
   return (
     <div className="app-shell">
       <header className="app-header">
         <h1>API Debugger</h1>
-        <p>Paste an endpoint, choose GET or POST, add headers/body, and run the request.</p>
+        <p>A tool for testing GET and POST API endpoints</p>
       </header>
 
       <main className="request-panel">
@@ -200,7 +229,7 @@ function App() {
         <section className="saved-panel">
           <div className="saved-panel-header">
             <h2>Saved requests</h2>
-            <p>Load a saved request to edit and replay it.</p>
+            <p>Load a saved request to edit and/or replay it.</p>
           </div>
 
           {savedRequests.length === 0 ? (
