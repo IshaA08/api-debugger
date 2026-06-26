@@ -228,11 +228,11 @@
 .request-form select,
 .request-form textarea,
 .response-panel textarea {
-  width: 100%;
+  width: 97%;
   min-width: 0;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid var(--border);
-  padding: 12px 14px;
+  padding: 10px 10px;
   background: var(--surface);
   color: var(--text);
   font: inherit;
